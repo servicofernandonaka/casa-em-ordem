@@ -5,15 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Casa em Ordem</title>
   <meta name="description" content="Fotografe um cômodo e receba um plano de arrumação e uma imagem de como ele pode ficar.">
-  <meta name="theme-color" content="#2f6f5e">
+  <meta name="theme-color" content="#07090b" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#e9edec" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Casa em Ordem">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
   <main id="app" aria-live="polite"></main>
   <div id="toast" role="status" hidden></div>
   <script src="app.js"></script>
