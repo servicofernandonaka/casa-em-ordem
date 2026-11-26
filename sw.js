@@ -1,5 +1,5 @@
 // Guarda os arquivos do app para abrir rápido e funcionar sem internet.
-const VERSION = 'casa-em-ordem-v2';
+const VERSION = 'casa-em-ordem-v3';
 const SHELL = [
   './', 'index.html', 'app.js', 'styles.css', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'

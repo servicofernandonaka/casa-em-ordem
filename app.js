@@ -12,9 +12,9 @@ const ROOMS = [
 ];
 const TIMES = [['15 minutos', '00:15', '15m'], ['30 minutos', '00:30', '30m'], ['1 hora', '01:00', '1h'], ['2 horas', '02:00', '2h'], ['meio dia', '04:00', '4h']];
 const STYLES = [
-  ['pratico', 'Prático', 'prático e funcional, fácil de manter no dia a dia', '⚙️', 'Fácil de manter'],
-  ['minimalista', 'Mínimo', 'minimalista, com o mínimo de objetos à vista', '◻️', 'Pouco à vista'],
-  ['aconchegante', 'Aconchego', 'aconchegante, organizado mas com cara de lar', '🕯️', 'Cara de lar'],
+  ['pratico', 'Prático', 'prático e funcional, fácil de manter no dia a dia', 'tool', 'Fácil de manter'],
+  ['minimalista', 'Mínimo', 'minimalista, com o mínimo de objetos à vista', 'square', 'Pouco à vista'],
+  ['aconchegante', 'Aconchego', 'aconchegante, organizado mas com cara de lar', 'heart', 'Cara de lar'],
 ];
 const GEMINI_URL = 'https://gemini.google.com/app';
 
@@ -160,6 +160,10 @@ const ICONS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   send: '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  tool: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
+  square: '<rect x="5" y="5" width="14" height="14" rx="2"/>',
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>',
+  chevron: '<path d="m9 18 6-6-6-6"/>',
 };
 const ic = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -382,6 +386,19 @@ async function renderHome() {
   const total = all.length, done = all.filter((t) => t.done).length;
   const pct = total ? done / total : 0;
   const leftMin = all.reduce((s, t) => s + (t.done ? 0 : t.min || 0), 0);
+  const resume = items.find((a) => !a.tasks.length || a.tasks.some((t) => !t.done));
+
+  let continueCard = '';
+  if (resume) {
+    const [, emo, rname] = roomOf(resume.room);
+    const n = resume.tasks.length, d = resume.tasks.filter((t) => t.done).length;
+    const next = resume.tasks.find((t) => !t.done);
+    const sub = n ? `Etapa ${d + 1} de ${n} · ${next.text}` : 'Falta consultar o Gemini';
+    continueCard = `<a class="panel continue reveal" href="#a/${resume.id}">
+      <img src="${blobUrl(resume.before)}" alt="">
+      <div><span class="label">Continuar</span><strong><span aria-hidden="true">${emo}</span> ${esc(rname)}</strong><small>${esc(sub)}</small></div>
+      <span class="go">${ic('chevron')}</span></a>`;
+  }
 
   const cards = items.map((a) => {
     const [, icon, name] = roomOf(a.room);
@@ -392,7 +409,7 @@ async function renderHome() {
     return `<a class="cycle-card" href="#a/${a.id}">
       <div class="cc-img"><img src="${blobUrl(a.after || a.before)}" alt="" loading="lazy"><span class="cc-status s-${state}">${label}</span></div>
       <div class="cc-body">
-        <div><div class="cc-title">${icon} ${esc(name)}</div><div class="cc-meta">${fmtDate(a.createdAt)}${n ? ` · ${d}/${n} ETAPAS` : ''}</div></div>
+        <div><div class="cc-title"><span aria-hidden="true">${icon}</span> ${esc(name)}</div><div class="cc-meta">${fmtDate(a.createdAt)}${n ? ` · ${d}/${n} ETAPAS` : ''}</div></div>
         <div class="mini-ring">${miniRing(p)}<b>${Math.round(p * 100)}</b></div>
       </div>
     </a>`;
@@ -410,24 +427,25 @@ async function renderHome() {
       <a class="logo" href="#"><img src="icons/icon-192.png" alt=""><span>CASA<b>EM ORDEM</b></span></a>
       <div class="sb-right"><span class="led small" data-clock>${clockText()}</span>${soundBtn()}</div>
     </header>
-    <section class="hero reveal">
+    <section class="hero reveal ${resume ? 'compact' : ''}">
       <div class="dial" id="homeDial">${ring(0)}
-        <div class="dial-center"><div class="led big" id="homePct">0</div><div class="unit">% DA CASA EM ORDEM</div></div>
+        <div class="dial-center"><div class="led big" id="homePct">${total ? 0 : '--'}</div><div class="unit">% DA CASA EM ORDEM</div></div>
       </div>
       <div class="readouts">
         <div class="readout"><span class="led">${pad(items.length)}</span><small>CICLOS</small></div>
-        <div class="readout"><span class="led">${pad(total - done)}</span><small>TAREFAS</small></div>
+        <div class="readout"><span class="led">${pad(total - done)}</span><small>ETAPAS</small></div>
         <div class="readout"><span class="led">${leftMin ? fmtMin(leftMin) : '--'}</span><small>RESTANTE</small></div>
       </div>
     </section>
-    <a class="btn primary xl glow reveal" href="#nova">${ic('power')} Iniciar novo ciclo</a>
+    ${continueCard}
+    <a class="btn ${resume ? '' : 'primary glow'} xl reveal" href="#nova">${ic('power')} Iniciar novo ciclo</a>
     ${items.length
-      ? `<div class="sec-head reveal"><h2>Seus ciclos</h2><span class="chip-led">${items.filter((a) => a.tasks.some((t) => !t.done)).length} ATIVOS</span></div>
+      ? `<div class="sec-head reveal"><h2>Seus ciclos</h2><span class="chip-led">${((n) => `${n} ${n === 1 ? 'ATIVO' : 'ATIVOS'}`)(items.filter((a) => a.tasks.some((t) => !t.done)).length)}</span></div>
          <div class="carousel reveal">${cards}</div>`
       : `<div class="boot">${boot}</div>`}`;
 
   requestAnimationFrame(() => setRing($('#homeDial'), pct));
-  countUp($('#homePct'), Math.round(pct * 100));
+  if (total) countUp($('#homePct'), Math.round(pct * 100));
 
   // Inclinação 3D dos cartões ao passar o mouse
   $$('.cycle-card').forEach((card) => {
@@ -485,7 +503,7 @@ function renderNew() {
     <section class="panel reveal">
       <div class="panel-head"><span class="label">Modo</span></div>
       <div class="modes" role="radiogroup" aria-label="Estilo">
-        ${STYLES.map(([id, n, , emo, sub], i) => `<button type="button" class="mode" role="radio" aria-checked="${i === 0}" data-style="${id}"><span class="mode-led"></span><span class="mode-ic">${emo}</span><strong>${n}</strong><small>${sub}</small></button>`).join('')}
+        ${STYLES.map(([id, n, , emo, sub], i) => `<button type="button" class="mode" role="radio" aria-checked="${i === 0}" data-style="${id}"><span class="mode-led"></span><span class="mode-ic">${ic(emo)}</span><strong>${n}</strong><small>${sub}</small></button>`).join('')}
       </div>
     </section>
 
@@ -518,7 +536,7 @@ function renderNew() {
         dot.className = 'dot on';
         vfStatus.textContent = `IMAGEM PRONTA · ${state.photo.w}×${state.photo.h}`;
         startBtn.disabled = false;
-        hint.textContent = 'Segure o botão para iniciar';
+        hint.textContent = 'Toque para iniciar';
         fx.ok();
       }, reduceMotion ? 0 : 1500);
     } catch (err) {
@@ -613,20 +631,23 @@ function renderNew() {
     startBtn.classList.add('launch');
     setTimeout(() => (location.hash = `a/${a.id}`), reduceMotion ? 0 : 450);
   };
-  startBtn.addEventListener('pointerdown', (e) => {
-    if (startBtn.disabled) return;
-    e.preventDefault();
-    startBtn.classList.add('holding');
-    fx.tick();
-    holdTimer = setTimeout(launch, 800);
-  });
   const cancelHold = () => {
     if (!startBtn.classList.contains('holding') || launch.busy) return;
     clearTimeout(holdTimer);
     startBtn.classList.remove('holding');
-    hint.textContent = 'Continue segurando até o anel completar';
+    hint.textContent = 'Cancelado. Toque para iniciar';
+    fx.tap();
   };
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => startBtn.addEventListener(ev, cancelHold));
+  startBtn.addEventListener('pointerdown', (e) => {
+    if (startBtn.disabled) return;
+    e.preventDefault();
+    if (startBtn.classList.contains('holding')) return cancelHold(); // segundo toque cancela
+    startBtn.classList.add('holding');
+    hint.textContent = 'Iniciando… toque de novo para cancelar';
+    fx.tick();
+    holdTimer = setTimeout(launch, 800);
+  });
+  startBtn.addEventListener('pointercancel', cancelHold);
   startBtn.addEventListener('click', (e) => { if (e.detail === 0) launch(); }); // teclado / leitor de tela
   startBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 }
@@ -640,7 +661,20 @@ let focusTimer = null; // { aid, tid, end, dur, iv }
 function stopFocus() {
   if (focusTimer) clearInterval(focusTimer.iv);
   focusTimer = null;
+  keepAwake(false);
 }
+
+/* Mantém a tela ligada durante o foco, onde o navegador permitir */
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch { /* sem suporte ou negado */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && focusTimer) { keepAwake(true); tickFocus(); }
+});
 
 async function renderDetail(id) {
   const a = await db.get(id);
@@ -663,12 +697,13 @@ async function renderDetail(id) {
          <span class="badge">ANTES</span><span class="badge r">DEPOIS</span>
          <input type="range" min="0" max="100" value="50" step="0.1" aria-label="Comparar antes e depois">
        </div>`
-    : `<div class="viewer reveal"><img src="${blobUrl(a.before)}" alt="Foto do cômodo"><span class="badge">ANTES</span></div>`;
+    : `<div class="viewer reveal"><img src="${blobUrl(a.before)}" alt="Foto do cômodo"><span class="badge">ANTES</span>
+         ${hasPlan ? `<button class="btn primary cta" data-act="goto-preview">${ic('spark')} Ver como vai ficar</button>` : ''}</div>`;
 
   /* Linha do tempo com o Gemini */
   const active = !a.sentPlan && !hasPlan ? 1 : !hasPlan ? 2 : !a.after ? 3 : 0;
   const stage = (n, isDone, title, desc, actions, extra = '') => `
-    <div class="stage ${isDone ? 'done' : ''} ${active === n ? 'active' : ''}">
+    <div class="stage ${isDone ? 'done' : ''} ${active === n ? 'active' : ''}" id="stage${n}">
       <span class="node">${isDone ? ic('check') : n}</span>
       <div><h3>${title}</h3><p>${desc}</p><div class="actions">${actions}</div>${extra}</div>
     </div>`;
@@ -681,7 +716,7 @@ async function renderDetail(id) {
       hasPlan ? `Programa com ${total} etapas carregado. Cole outra resposta para refazer.` : 'No Gemini, toque em "Copiar" embaixo da resposta e volte para cá.',
       `<textarea id="answer" placeholder="Cole aqui a resposta do Gemini"></textarea>
        <div class="row"><button class="btn" data-act="paste">${ic('paste')} Colar</button><button class="btn primary" data-act="parse">Carregar</button></div>`)}
-    ${stage(3, !!a.after, 'Prévia do resultado',
+    ${stage(3, !!a.after, 'Ver como vai ficar',
       'Na mesma conversa do Gemini, cole o segundo pedido. Salve a imagem gerada e escolha-a aqui.',
       `<button class="btn primary" data-act="send-image">${ic('spark')} Copiar pedido e abrir o Gemini</button>
        <label class="btn">${ic('image')} ${a.after ? 'Trocar' : 'Escolher'} imagem do depois<input class="sr-file" type="file" accept="image/*" id="afterFile"></label>`,
@@ -734,7 +769,7 @@ async function renderDetail(id) {
         <li class="prog ${t.done ? 'done' : ''} ${current && t.id === current.id ? 'current' : ''}" data-id="${t.id}">
           <div class="prog-bg"><span class="bg-ok">${ic('check')}</span><span class="bg-del">${ic('trash')}</span></div>
           <div class="prog-face">
-            <button class="prog-check" data-toggle="${t.id}" aria-pressed="${t.done}" aria-label="${t.done ? 'Desmarcar' : 'Concluir'}: ${esc(t.text)}">${ic('check')}</button>
+            <button class="prog-check" data-toggle="${t.id}" aria-pressed="${t.done}" aria-label="${t.done ? 'Desmarcar' : 'Concluir'}: ${esc(t.text)}"><span class="box">${ic('check')}</span></button>
             <span class="prog-num">${pad(i + 1)}</span>
             <span class="prog-text">${esc(t.text)}</span>
             ${t.min ? `<span class="prog-min">${fmtMin(t.min)}</span>` : '<span></span>'}
@@ -742,12 +777,12 @@ async function renderDetail(id) {
         </li>`).join('')}
     </ol>
     <form class="add-task reveal" id="addTask"><input name="t" placeholder="Adicionar etapa" autocomplete="off" aria-label="Nova etapa"><button class="btn" aria-label="Adicionar">${ic('plus')}</button></form>
-    <details class="panel gem-box reveal" style="margin-top:22px"><summary>${pipeHead}</summary>${stages}</details>` : '';
+    <details class="panel gem-box reveal" id="gemBox" style="margin-top:22px" ${a.after ? '' : 'open'}><summary>${pipeHead}</summary>${stages}</details>` : '';
 
   app.innerHTML = `
     <header class="topbar reveal">
       <a class="icon-btn" href="#" aria-label="Voltar">${ic('back')}</a>
-      <h1><span>${icon} ${esc(name)}<span class="sub">${fmtDate(a.createdAt)} · ${esc(a.time.toUpperCase())}</span></span></h1>
+      <h1><span><span aria-hidden="true">${icon}</span> ${esc(name)}<span class="sub">${fmtDate(a.createdAt)} · ${esc(a.time.toUpperCase())}</span></span></h1>
       ${soundBtn()}
     </header>
     ${viewer}
@@ -825,6 +860,15 @@ async function renderDetail(id) {
     });
   };
 
+  /* --- Demonstra o gesto de deslizar uma única vez --- */
+  let nudged = false;
+  try { nudged = localStorage.getItem('ceo-nudged') === '1'; } catch { /* ok */ }
+  const firstOpen = $('.prog:not(.done)');
+  if (!nudged && firstOpen && !reduceMotion) {
+    firstOpen.classList.add('nudge');
+    try { localStorage.setItem('ceo-nudged', '1'); } catch { /* ok */ }
+  }
+
   /* --- Gestos de deslizar nas etapas --- */
   $$('.prog').forEach((li) => {
     const face = $('.prog-face', li);
@@ -876,6 +920,13 @@ async function renderDetail(id) {
 
     switch (btn.dataset.act) {
       case 'complete': return current && setDone(current.id, true);
+      case 'goto-preview': {
+        const box = $('#gemBox');
+        if (box) box.open = true;
+        fx.tap();
+        $('#stage3')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+        return;
+      }
       case 'skip': {
         if (!current || total < 2) return;
         a.tasks.splice(curIdx, 1); a.tasks.push(current);
@@ -890,8 +941,9 @@ async function renderDetail(id) {
         stopFocus();
         const dur = (current.min || 10) * 60000;
         focusTimer = { aid: a.id, tid: current.id, dur, end: Date.now() + dur, iv: setInterval(tickFocus, 250) };
+        keepAwake(true);
         fx.start();
-        toast(`Foco de ${fmtMin(current.min || 10)} iniciado`, { ms: 2000 });
+        toast(`Foco de ${fmtMin(current.min || 10)} iniciado. Deixe o app aberto para ouvir o alarme.`, { ms: 4000 });
         return save({});
       }
       case 'reset': {
